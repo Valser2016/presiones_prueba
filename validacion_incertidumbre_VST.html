@@ -395,6 +395,17 @@
         document.getElementById("diametro_int_VST").textContent = isNaN(diametro_int) ? "-" : diametro_int;
 
         const datos = JSON.parse(localStorage.getItem("presiones_vst"));
+        // Obtener presión SET enviada desde index.html
+        const parametros = new URLSearchParams(window.location.search);
+        
+        const presionSet = Number(
+            parametros.get("set") ||
+            localStorage.getItem("presion_set_VST")
+        );
+        
+        if (!Number.isFinite(presionSet) || presionSet <= 0) {
+            console.warn("No se recibió una presión SET válida desde index.html");
+        }
 
         if (!datos) return;
 
@@ -409,9 +420,14 @@
             celda.textContent = (p !== undefined && !isNaN(p)) ? p : "-";
         });
 
-        // PROMEDIO
-        const promedio = presiones.length ? presiones.reduce((a,b)=>a+b,0)/presiones.length : 0;
-        document.getElementById("promedio_inicio").textContent = promedio.toFixed(2);
+        // PROMEDIO DE LAS TRES MEDICIONES
+        const promedio = presiones.reduce((a, b) => a + b, 0) / presiones.length;
+        
+        // Presión SET independiente
+        document.getElementById("promedio_inicio").textContent =
+            Number.isFinite(presionSet) ? presionSet.toFixed(2) : "-";
+        
+        // Promedio de mediciones para repetibilidad
         document.getElementById("promedio_datos").textContent = promedio.toFixed(2);
 
         // DESVIACIÓN PARA TABLA ECUACIÓN
@@ -534,7 +550,7 @@
                 }
 
                 // Fuerza a realizar = (Presión de set - Presión de caldera) * Área (psi * in^2 = lb-f)
-                const presSetNum = Number(promedio) || 0;
+                const presSetNum = presionSet;
                 const presCalNum = Number(parseFloat(pres_caldera)) || 0;
                 const fuerza = isFinite(areaIn2_local) ? (presSetNum - presCalNum) * areaIn2_local : NaN;
                 if (tablaInicio.rows[3] && tablaInicio.rows[3].cells[1]) {
@@ -1163,7 +1179,7 @@
                         if (celdas_area.length > 4) {
                             try {
                                 const areaIn2_val = isFinite(area_m2_val) ? (area_m2_val / (0.0254 * 0.0254)) : NaN;
-                                const presSetNum_local = Number(promedio) || 0;
+                                const presSetNum_local = presionSet;
                                 const presCalNum_local = Number(parseFloat(pres_caldera)) || 0;
                                 const fuerza_lbf_val = isFinite(areaIn2_val) && areaIn2_val !== 0 ? (presSetNum_local - presCalNum_local) * areaIn2_val : NaN;
                                 const fuerza_kN_val = isFinite(fuerza_lbf_val) ? fuerza_lbf_val * 0.0044482216152605 : NaN;
@@ -1524,8 +1540,8 @@
                 : null;
 
             const payload = JSON.parse(localStorage.getItem("prueba_actual") || "null");
-            const criterio = payload && isFinite(Number(payload.promedio))
-                ? Number(payload.promedio) * 0.01
+            const criterio = Number.isFinite(presionSet)
+                ? presionSet * 0.01
                 : NaN;
             const aprobadoIncertidumbre = uValor !== null && !isNaN(uValor) && isFinite(criterio) && uValor <= criterio;
             localStorage.setItem("resultado_aprobado", String(aprobadoIncertidumbre));
